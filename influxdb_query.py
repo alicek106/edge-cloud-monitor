@@ -234,9 +234,9 @@ def getEachNodesNetworkBytes():
         
     return json.dumps(dataArr)
 
-print(getAllNodeNetworkBytes())
-print(getEachNodesNetworkBytes())
-print(getAllNodesMemoryPercent())
-print(getEachNodesMemoryPercent())
-print(getAllNodesCpuPercent())
-print(getEachNodesCpuPercent())
+#print(getAllNodeNetworkBytes())
+#print(getEachNodesNetworkBytes())
+#print(getAllNodesMemoryPercent())
+#print(getEachNodesMemoryPercent())
+#print(getAllNodesCpuPercent())
+#print(getEachNodesCpuPercent())
