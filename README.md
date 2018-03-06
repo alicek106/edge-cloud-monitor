@@ -36,19 +36,21 @@ bash# docker stack deploy -c docker-compose-arm.yml monitoring
 ```
 After finishing launching all services, create cadvisor database in influxdb.
 ```
-docker exec `docker ps | grep -i influx | awk '{print $1}'` influx -execute 'CREATE DATABASE cadvisor'
+bash# docker exec `docker ps | grep -i influx | awk '{print $1}'` influx -execute 'CREATE DATABASE cadvisor'
 ```
 
 ### Python Environment setup
 #### 3. apt update and install pip3
 ```
-apt update && apt install python3-pip -y
+bash# apt update && apt install python3-pip -y
 ```
 
 #### 4. install virtualenv
 ```
-cd /root
-git clone https://github.com/alicek106/edge-cloud-monitor.git
-pip3 install virtualenv && virtualenv edge-cloud-monitor
-cd edge-cloud-monitor/
+bash# pip3 install virtualenv
+bash# cd /root
+bash# git clone https://github.com/alicek106/edge-cloud-monitor.git
+bash# cd edge-cloud-monitor/
+bash# virtualenv icns
+bash# source icns/bin/activate
 ```
