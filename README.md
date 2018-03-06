@@ -79,4 +79,6 @@ rasp05 192.168.0.85:2375
 ```
 
 #### Let's enjot monitoring !
-
+```
+bash# watch python3 edge-cloud-monitor.py
+```
