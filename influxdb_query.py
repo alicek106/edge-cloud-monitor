@@ -1,5 +1,4 @@
 from influxdb import InfluxDBClient
-import pymysql
 import docker_node_spec
 import json
 import configparser

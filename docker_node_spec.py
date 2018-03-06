@@ -1,5 +1,4 @@
 import docker
-import pymysql
 import logging
 
 # Config load (Docker Configs)
