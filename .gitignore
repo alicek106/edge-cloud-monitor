@@ -1,2 +1,7 @@
 __pycache__/
 icns/
+bin/
+lib/
+lib64/
+include/
+pip-selfcheck.json
