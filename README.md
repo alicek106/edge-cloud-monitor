@@ -1,4 +1,4 @@
-# edge-cloud-monitor
+# Docker Swarm Mode Monitoring : ICNS edge-cloud-monitor
 
 First of all, you have to set up swarm mode cluster.  
 And in all nodes (manager, worker) following option must be applied to Docker Daemon.  
