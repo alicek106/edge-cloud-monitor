@@ -26,11 +26,11 @@ get_all_nodes_memory_query = 'select "container_name", "com.docker.stack.namespa
     '"com.docker.swarm.service.name", "com.docker.swarm.task.name", ' \
     'last(value) from memory_rss where container_name != \'/\' and time > now() - 30s group by container_name;'
 
-get_all_nodes_cpu_query = 'SELECT time, container_name, machine, value FROM cpu_usage_total ' \
-    'where container_name != \'/\' GROUP BY container_name ORDER BY DESC LIMIT 2'
+get_all_nodes_cpu_query = 'SELECT time, container_name, machine, "com.docker.swarm.service.name", value FROM cpu_usage_total ' \
+    'where container_name != \'/\' and time > now() - 30s GROUP BY container_name ORDER BY DESC LIMIT 2'
 
-get_all_nodes_rx_query = 'SELECT time, machine, container_name, value FROM rx_bytes where container_name != \'/\' GROUP BY container_name ORDER BY DESC LIMIT 2'
-get_all_nodes_tx_query = 'SELECT time, machine, container_name, value FROM tx_bytes where container_name != \'/\' GROUP BY container_name ORDER BY DESC LIMIT 2'
+get_all_nodes_rx_query = 'SELECT time, machine, container_name, "com.docker.swarm.service.name", value FROM rx_bytes where container_name != \'/\'  and time > now() - 30s GROUP BY container_name ORDER BY DESC LIMIT 2'
+get_all_nodes_tx_query = 'SELECT time, machine, container_name, "com.docker.swarm.service.name", value FROM tx_bytes where container_name != \'/\' and time > now() - 30s GROUP BY container_name ORDER BY DESC LIMIT 2'
 
 
 
@@ -54,7 +54,6 @@ def getEachNodesMemoryPercent():
     result = client.query(get_all_nodes_memory_query)
     points = list(result.get_points(measurement='memory_rss'))
 
-    dataArr = []
     dataDic = {}
     
     for spec in node_spec:
@@ -63,14 +62,31 @@ def getEachNodesMemoryPercent():
     for point in points:
         data = point['last'] / 1024 / 1024
         dataDic[point['machine']] = dataDic[point['machine']] + data
-        
-    for spec in node_spec:
-        tmpDataDic = {'host' : spec[0], 'memory_usage_rss_host' : round(dataDic[spec[0]] / spec[3] * 100, 2)}
-        dataArr.append(tmpDataDic)
 
+    for key in dataDic:
+        dataDic[key] = round(dataDic[key] / spec[3] * 100, 2)
+    
     client.close()
-    return json.dumps(dataArr)
+    return json.dumps(dataDic)
 
+def getEachServiceMemoryPercent():
+    client = InfluxDBClient(influx_host, influx_port, influx_user, influx_password, influx_dbname)
+    result = client.query(get_all_nodes_memory_query)
+    points = list(result.get_points(measurement='memory_rss'))
+
+    dataDic = {}
+
+    for point in points:
+        data = point['last'] / 1024 / 1024
+        try:
+            dataDic[point['com.docker.swarm.service.name']] = dataDic[point['com.docker.swarm.service.name']] + data
+        except:
+            dataDic[point['com.docker.swarm.service.name']] = data
+
+    for key in dataDic:
+        dataDic[key] = round(dataDic[key] / spec[3] * 100, 2)
+
+    return json.dumps(dataDic)
 
 ################### CPU 
 ################### ... CPU!
@@ -120,13 +136,39 @@ def getEachNodesCpuPercent():
             dataDic[point['machine']] = dataDic[point['machine']] + (((cpu_accumulative - point['value']) / (time - point['time']))*100)
             index = True
 
-    for spec in node_spec:
-        tmpDataDic = {'host' : spec[0], 'cpu_usage_host' : round(dataDic[spec[0]], 2)}
-        dataArr.append(tmpDataDic)
+    for key in dataDic:
+        dataDic[key] = round(dataDic[key], 2)
 
     client.close()
-    return json.dumps(dataArr)
+    return json.dumps(dataDic)
 
+def getEachServiceCpuPercent():
+    client = InfluxDBClient(influx_host, influx_port, influx_user, influx_password, influx_dbname)
+    result = client.query(get_all_nodes_cpu_query, epoch='ns')
+    points = list(result.get_points(measurement='cpu_usage_total'))
+    index = True # variable for switch. Because query return each 2 rows...
+    time = 0 # Temp variable for saving time
+    cpu_accumulative = 0 # Temp variable for saving accumulative value
+
+    dataDic = {}
+
+    for point in points:
+        if(index):
+            time = point['time']
+            cpu_accumulative = point['value']
+            index = False
+        else:
+            try:
+                dataDic[point['com.docker.swarm.service.name']] = dataDic[point['com.docker.swarm.service.name']] + (((cpu_accumulative - point['value']) / (time - point['time']))*100)
+            except:
+                dataDic[point['com.docker.swarm.service.name']] = (((cpu_accumulative - point['value']) / (time - point['time']))*100)
+            index = True
+
+    for key in dataDic:
+        dataDic[key] = round(dataDic[key], 2)
+
+    client.close()
+    return json.dumps(dataDic)
 
 ######## Network
 ######## ... Network!
@@ -184,7 +226,6 @@ def getEachNodesNetworkBytes():
     time = 0 # Temp variable for saving time
     rx_accumulative = 0 # Temp variable for saving accumulative value
 
-    dataArr_Rx = []
     dataDic_Rx = {}
     
     for spec in node_spec:
@@ -207,7 +248,6 @@ def getEachNodesNetworkBytes():
     time = 0 # Temp variable for saving time
     tx_accumulative = 0 # Temp variable for saving accumulative value
 
-    dataArr_Tx = []
     dataDic_Tx = {}
     
     for spec in node_spec:
@@ -222,16 +262,68 @@ def getEachNodesNetworkBytes():
             dataDic_Tx[point['machine']] = dataDic_Tx[point['machine']] + (tx_accumulative - point['value'])
             index = True
             
-    for spec in node_spec:
-        tmpDataDic = {'host' : spec[0], 'rx_byte' : round(dataDic_Tx[spec[0]], 2)}
-        dataArr_Tx.append(tmpDataDic)
-        
     ## integrate!
     dataArr = []
     for spec in node_spec:
-        tmpDataDic = {'host' : spec[0], 'rx_byte' : round(dataDic_Rx[spec[0]], 2), 'tx_byte': round(dataDic_Tx[spec[0]], 2)}
+        tmpDataDic = {'host' : spec[0], 'rx_byte' : dataDic_Rx[spec[0]], 'tx_byte': dataDic_Tx[spec[0]]}
         dataArr.append(tmpDataDic)
         
+    return json.dumps(dataArr)
+
+def getEachServiceNetworkBytes():
+    client = InfluxDBClient(influx_host, influx_port, influx_user, influx_password, influx_dbname)
+
+    ######## Rx Bytes
+#    result = client.query(get_all_nodes_rx_query, epoch='ns')
+    result = client.query(get_all_nodes_rx_query)
+    points = list(result.get_points(measurement='rx_bytes'))
+    used_rx_bytes = 0 
+    index = True # variable for switch. Because query return each 2 rows...
+    time = 0 # Temp variable for saving time
+    rx_accumulative = 0 # Temp variable for saving accumulative value
+
+    dataDic_Rx = {}
+    
+    for point in points:
+        if(index):
+            time = point['time']
+            rx_accumulative = point['value']
+            index = False
+        else:
+            try:
+                dataDic_Rx[point['com.docker.swarm.service.name']] = dataDic_Rx[point['com.docker.swarm.service.name']] + (rx_accumulative - point['value'])
+            except:
+                dataDic_Rx[point['com.docker.swarm.service.name']] = (rx_accumulative - point['value'])
+            index = True
+
+    ######## Tx Bytes
+    result = client.query(get_all_nodes_tx_query, epoch='ns')
+    points = list(result.get_points(measurement='tx_bytes'))
+    used_tx_bytes = 0 
+    index = True # variable for switch. Because query return each 2 rows...
+    time = 0 # Temp variable for saving time
+    tx_accumulative = 0 # Temp variable for saving accumulative value
+
+    dataDic_Tx = {}
+
+    for point in points:
+        if(index):
+            time = point['time']
+            tx_accumulative = point['value']
+            index = False
+        else:
+            try:
+                dataDic_Tx[point['com.docker.swarm.service.name']] = dataDic_Tx[point['com.docker.swarm.service.name']] + (tx_accumulative - point['value'])
+            except:
+                dataDic_Tx[point['com.docker.swarm.service.name']] = (tx_accumulative - point['value'])
+            index = True
+
+    ## integrate!
+    dataArr = []
+    for key in dataDic_Tx:
+        tmpDataDic = {'service' : key, 'rx_byte' : dataDic_Rx[key], 'tx_byte': dataDic_Tx[key]}
+        dataArr.append(tmpDataDic)
+
     return json.dumps(dataArr)
 
 #print(getAllNodeNetworkBytes())
