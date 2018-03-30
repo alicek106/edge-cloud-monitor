@@ -78,7 +78,18 @@ rasp04 192.168.0.71:2375
 rasp05 192.168.0.85:2375
 ```
 
-#### Let's enjot monitoring !
+#### Let's enjoy monitoring !
 ```
 bash# watch python3 edge-cloud-monitor.py
 ```
+
+#### Metrics Format
+
+-> Just bytes  
+[{"service": "monitoring_influx", "rx_byte": 0, "tx_byte": 0}]
+
+-> Sum all containers of a service, and devide it by memory capacity, multply 100. Thus, it will sum of percent in all nodes.  
+{"monitoring_cadvisor": 6.17}
+
+-> Sum of cpu usage percent (of all containers) in all nodes.  
+{"monitoring_influx": 0.07}
