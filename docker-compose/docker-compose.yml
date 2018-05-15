@@ -2,7 +2,7 @@ version: '3'
 
 services:
   influx:
-    image: influxdb:1.4.3
+    image: icnslab/edge-cloud-mon-influxdb:1.4.3-intel
     ports:
       - 0.0.0.0:8086:8086
     deploy:
@@ -12,7 +12,7 @@ services:
           - node.role == manager
 
   grafana:
-    image: grafana/grafana:4.6.3
+    image: icnslab/edge-cloud-mon-grafana:v4.6.3-intel
     ports:
       - 0.0.0.0:3000:3000
     depends_on:
@@ -24,7 +24,7 @@ services:
           - node.role == manager
 
   cadvisor:
-    image: alicek106/cadvisor:influx-rss-memory-0.28.3v
+    image: icnslab/edge-cloud-mon-cadvisor:influx-rss-memory-0.28.3v-intel
     hostname: '{{.Node.Hostname}}'
     command: -logtostderr -docker_only -storage_driver=influxdb 
              -storage_driver_db=cadvisor -storage_driver_host=influx:8086 
